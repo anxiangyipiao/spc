@@ -110,7 +110,21 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
         self.published_check_offset_day = self.MASTER.hget(self.event_key, 'published_check_offset_day')
 
-
+    def date_to_timestamp(self, date_str):
+        date_str = date_str.strip()
+        dt = datetime.strptime(str(date_str), '%Y-%m-%d')
+        return int(dt.timestamp())
+     
+    def check_published_time(self, publish_time):
+        
+        # 提前结束
+        if self.max_error_num < 0:
+            return False
+        
+        # 转时间戳对比
+        check_time = self.date_to_timestamp(publish_time)
+        return check_time > (self.last_published_timestamp - int(self.published_check_offset_day) * 86400)
+    
     def get_success_name(self,publish_time):
         
         month_now = publish_time[:7]
@@ -209,17 +223,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         
         self.MASTER.sadd(new_name, json.dumps({"url": url, "publish_time": publish_time, "title": title}))
 
-    # 时间对比，控制翻页
-    def check_published_time(self, publish_time):
-        
-        # 提前结束
-        if self.max_error_num < 0:
-            return False
-        
-        # 转时间戳对比
-        check_time = self.date_to_timestamp(publish_time)
-        return check_time > (self.last_published_timestamp - int(self.published_check_offset_day) * 86400)
-
+   
     # 通过redis检测数据是否重复
     def record_error(self, request, response):
         meta = request.meta
@@ -247,11 +251,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
                     self.max_error_num += 1
                     self.count_download_link -= 1
                     print('self.count_download_link', self.count_download_link)
-
-    def date_to_timestamp(self, date_str):
-        date_str = date_str.strip()
-        dt = datetime.strptime(str(date_str), '%Y-%m-%d')
-        return int(dt.timestamp())
 
     # 正常结束，调用检查更新代码
     def closed(self, reason):
@@ -298,6 +297,8 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         # 重复项目名称和重复次
         project_redis_names_dict = {key: value for key, value in project_redis_names.items() if value > 1}
         return project_redis_names_dict
+
+
 
     # 打开浏览器
     def openBrowser(self, use_profix=False, timeout=360, page_load_strategy=''):
@@ -354,14 +355,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             content = self.driver.page_source
         return HtmlResponse(url=url, body=content, encoding='utf-8', request=request)
 
-    def drission_page(self, url, request):
-        if self.driver == None:
-            co = ChromiumOptions().auto_port()
-            self.driver = ChromiumPage(co)
-        self.driver.get(url, retry=3, timeout=10, interval=2)
-        time.sleep(0.5)
-        return HtmlResponse(url=url, body=self.driver.html, encoding='utf-8', request=request)
-
     def page_wait(self, url, time_limit):
         if time_limit > 0:
             check_content = False
@@ -397,6 +390,9 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             for item in cookies:
                 _cookie = _cookie + item['name'] + '=' + item['value'] + ';'
             return _cookie
+
+
+
 
     def parse(self, response):
         pass
