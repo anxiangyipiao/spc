@@ -226,6 +226,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
    
     # 通过redis检测数据是否重复
     def record_error(self, request, response):
+        
         meta = request.meta
         # 部分代码传递方式不一致，做兼容处理
         if meta.get('item') != None:

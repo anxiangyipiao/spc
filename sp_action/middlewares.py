@@ -78,15 +78,7 @@ class DownloaderMiddleware:
         if request.method == 'GET' and spider.download_by_driver == True and request.meta.get(
                 'download_by_driver') == None:
             return spider.driver_get_page(request.url, request)
-            # return HtmlResponse(url=spider.driver.current_url,  # 当前连接
-            #                         body=spider.driver.page_source,  # 源代码
-            #                         encoding="utf-8")  # 返回页面信息
-        # Must either:
-        # - return None: continue processing this request
-        # - or return a Response object
-        # - or return a Request object
-        # - or raise IgnoreRequest: process_exception() methods of
-        #   installed downloader middleware will be called
+            
         return None
 
     def process_response(self, request, response, spider):
@@ -97,7 +89,7 @@ class DownloaderMiddleware:
         # - return a Response object
         # - return a Request object
         # - or raise IgnoreRequest
-        print(response.status, response.url)
+        # print(response.status, response.url)
         return response
 
     def process_exception(self, request, exception, spider):
