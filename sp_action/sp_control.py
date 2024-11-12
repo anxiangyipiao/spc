@@ -28,8 +28,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     start_urls = ["https"]
     province = ''
     city = ''
-    MYSETINEL = ''
-    
     # 上次采集时间
     last_published_timestamp = 0
 
@@ -48,7 +46,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     max_error_num = 5
     
     # 单网址获取错误超过该次数，跳过
-    retry_num = 3
+    retry_num = 5
     
     # 是否使用chrome下载数据
     download_by_driver = False
@@ -56,17 +54,11 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     driver = None
     
     env = local_config['env']
-
     
     # 翻页结束标志
     page_over = False
 
     check_rule = None
-
-    config_ext = None
-
-    task_list = []
-    titles_list = []
 
     custom_settings = {
         "ITEM_PIPELINES": {'sp_action.pipelines.TransformerAddPipeline': 300},
@@ -140,7 +132,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             month_now = publish_time[:7]
             return self.env + ':' + 'new_link' + ':' + self.province + ':' + self.name + ':' + month_now + month_now
     
-    
     # 添加下载任务set 先使用默认日期过滤，再使用redis集合去重，默认使用去重的redis key为当前爬虫名称，可修改指定名称作为去重判断
     def add_download_task(self, union_id, publish_time, check_rule='normal'):
         '''
@@ -193,56 +184,46 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     # 下载成功回调函数
     def download_success(self, meta):
         
-        url = meta['url']
-        title = meta['title']
-        publish_time = meta['publish_time']
-        
-        dic_data = {}
-        dic_data['title'] = title
-        dic_data['publish_time'] = publish_time
-        dic_data['url'] = url
-
-        self.titles_list.append(dic_data)
-
-
-        success_name = self.get_success_name(publish_time)
-        ready_name = self.get_ready_name(publish_time)
-        new_name = self.get_new_link_name(publish_time)
+      
+        success_name = self.get_success_name(meta['publish_time'])
+        ready_name = self.get_ready_name(meta['publish_time'])
+        # new_name = self.get_new_link_name(meta['publish_time'])
            
         if self.check_rule == 'normal':
-            check_value = json.dumps({"url": url, "publish_time": publish_time})
+            check_value = json.dumps({"url": meta['url'], "publish_time": meta['publish_time']})
         
         else:
-            check_value = json.dumps({"url": url})
+            check_value = json.dumps({"url": meta['url']})
         
         # 判断是否已经存在ready集合中
         if self.MASTER.sismember(ready_name, check_value):
+            
             self.count_download_success += 1
+            
             # 移动到success集合中
             self.MASTER.smove(ready_name, success_name, check_value)
         
-        self.MASTER.sadd(new_name, json.dumps({"url": url, "publish_time": publish_time, "title": title}))
 
-   
     # 通过redis检测数据是否重复
-    def record_error(self, request, response):
+    def download_error(self, request, response):
         
         meta = request.meta
+
         # 部分代码传递方式不一致，做兼容处理
         if meta.get('item') != None:
             meta = meta.get('item')
+
+
         # 只监控详情数据获取部分，获取详情部分代码meta传递下面两个变量
         if meta.get('url') != None and meta.get('publish_time') != None:
             self.max_error_num -= 1
             filter_key = meta.get('url') + meta.get('title') + meta.get('publish_time')
             md5_key = hashlib.md5(filter_key.encode(encoding='UTF-8')).hexdigest()
-            ready_name = self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + meta.get(
-                'publish_time').strip()[:7] + ':' + md5_key
+            ready_name = self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + meta.get('publish_time').strip()[:7] + ':' + md5_key
+            
             if self.MASTER.hexists(ready_name, 'retry_num') == False:
-                self.MASTER.hmset(ready_name,
-                                  {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "response_code": response.status,
-                                   "url": meta.get('url'), "title": meta.get('title'),
-                                   "publish_time": meta.get('publish_time'), "retry_num": self.retry_num})
+                self.MASTER.hmset(ready_name,{"time": time.strftime("%Y-%m-%d %H:%M:%S"), "response_code": response.status,"url": meta.get('url'), "title": meta.get('title'),"publish_time": meta.get('publish_time'), "retry_num": self.retry_num})
+            
             else:
                 # 获取重试次数
                 retry_num = self.MASTER.hget(ready_name, 'retry_num')
@@ -253,8 +234,10 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
                     self.count_download_link -= 1
                     print('self.count_download_link', self.count_download_link)
 
+
     # 正常结束，调用检查更新代码
     def closed(self, reason):
+
         # 如果开启过浏览器，尝试关闭
         if self.driver != None:
             try:
@@ -264,16 +247,18 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             except:
                 pass
         print('closed', reason)
+
         if self.page_over == False or self.max_error_num < 0 or self.count_download_link != self.count_download_success:
-            # current_hour = datetime.now().hour
-            # if current_hour in (23, 0, 1, 2, 3, 4, 5):
-            #     return
+         
             update_map = {'running_status': 'faild', 'province': self.province, 'city': self.city, 'county': '','current_directory':self.current_directory}
+
         else:
-            update_map = {'running_status': 'success', 'retry_times': '0', 'last_publish_time': self.last_publish_time,
-                          'province': self.province, 'city': self.city, 'county': '','current_directory':self.current_directory}
+
+            update_map = {'running_status': 'success', 'retry_times': '0', 'last_publish_time': self.last_publish_time,'province': self.province, 'city': self.city, 'county': '','current_directory':self.current_directory}
+
         if hasattr(self, 'county'):
             update_map['county'] = self.county
+
         if hasattr(self, 'file_type'):
             update_map['file_type'] = self.file_type
 
@@ -283,22 +268,8 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         print('self.max_error_num', self.max_error_num)
         print('count_download_success:%s' % self.count_download_success)
 
-
         if self.last_publish_time != None:
             self.MASTER.hmset(self.event_key, update_map)
-
-    def get_redis_titles(self, new_month):
-        spider_name_redis = self.env + ':' + 'new_link' + ':' + self.province + ':' + self.name + ':' + new_month
-        lis = self.MASTER.smembers(spider_name_redis)
-        project_redis_list = []
-        for i in lis:
-            dates = json.loads(i)
-            project_redis_list.append(dates['title'] + dates['publish_time'])
-        project_redis_names = dict(Counter(project_redis_list))
-        # 重复项目名称和重复次
-        project_redis_names_dict = {key: value for key, value in project_redis_names.items() if value > 1}
-        return project_redis_names_dict
-
 
 
     # 打开浏览器

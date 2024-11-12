@@ -47,6 +47,7 @@ class TransformerAddPipeline(object):
         item['entry_time'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         entry_time2 = time.strftime("%Y-%m-%d", time.localtime()) + ' 17:00:00'
         entry_time3 = time.strftime("%Y-%m-%d", time.localtime()) + ' 17:40:00'
+        
         if item['entry_time'] > entry_time2 and item['entry_time'] < entry_time3:
             print('服务器忙，后续重新抓取')
         else:
@@ -56,9 +57,15 @@ class TransformerAddPipeline(object):
             if item['contents'] == None or item['contents'] == 'None':
                 print('详情页内容可能获取失败，请检查', item['title'])
                 return item
+            
+
+            
             spider.download_success(dict(item, **{"title": item["title"]}))
+            
+
             # 用时间  紧急处理redis问题
             if item['publish_time'] > '2024-11-10':
+                
                 # 二次过滤时间
                 default_publish_day = str(datetime.now() + timedelta(days=-4))[:10]
                 item['publish_time'] = item['publish_time'].replace('/', '-')
@@ -70,16 +77,13 @@ class TransformerAddPipeline(object):
 
                     keys = list(item.keys())  # ['pcid', 'pid', 'cid', 'roles']
                     values = list(item.values())  # ['333', '222', '111', '制作方']
+                    
                     # 所有字段组成的字符串
                     key_str = ','.join(['`%s`' % k for k in keys])
                     # 值组成的字符串
                     values_str = ','.join(["%s"] * len(values))
                     c_item = dict(**item)
                     c_keys = list(c_item.keys())
-
-                    # if 'entry_time' in keys:
-                    #     c_item.pop('entry_time')
-                    #     c_keys.remove('entry_time')
 
                     c_values = list(c_item.values())
                     # update字符串
@@ -144,8 +148,7 @@ class TransformerAddPipeline(object):
                             print(f'----- 插入/更新成功: -----')
                             return item
                         else:
-                            important_title = ['变压器', '主变', '油浸', '油变', '35KV', '中性点', '整流变', '配变', '厂用变', '变电站',
-                                               '66KV', '10KV', '220KV']
+                            important_title = ['变压器', '主变', '油浸', '油变', '35KV', '中性点', '整流变', '配变', '厂用变', '变电站','66KV', '10KV', '220KV']
                             if any(keyword in item['title'] for keyword in important_title) == True:
                                 item['contents'] = ''
                                 keys = list(item.keys())  # ['pcid', 'pid', 'cid', 'roles']
