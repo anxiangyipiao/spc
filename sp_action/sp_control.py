@@ -17,9 +17,6 @@ from datetime import datetime, timedelta
 
 
 
-from sp_action.utils.config_loader import ConfigLoader
-
-
 from sp_action.utils import RedisClient,local_config
 
 
@@ -44,9 +41,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     
     # 一次运行总错误次数超出该值，认为网站不可爬
     max_error_num = 5
-    
-    # 单网址获取错误超过该次数，跳过
-    retry_num = 5
     
     # 是否使用chrome下载数据
     download_by_driver = False
@@ -127,6 +121,10 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         month_now = publish_time[:7]
         return self.env + ':' + 'download_link' + ':' + self.province + ':' + self.name + ':' + month_now + ':ready'
 
+    def get_download_error(self,publish_time):
+       month_now = publish_time[:7]
+       return self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + month_now + ':' + md5_key
+
     def get_new_link_name(self,publish_time):
             
             month_now = publish_time[:7]
@@ -163,6 +161,9 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         success_exist = self.MASTER.sismember(success_name, check_value)
         if success_exist == False:
 
+            # 本轮爬取link加一
+            self.count_download_link += 1
+
             # 判断是否已经存在ready集合中
             ready_exist = self.MASTER.sismember(ready_name, check_value)
             
@@ -171,11 +172,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
                 
                 self.MASTER.sadd(ready_name, check_value)
 
-            # 判断是否已经存在任务列表中
-            if check_value not in self.task_list:
-                self.count_download_link += 1
-                self.task_list.append(check_value)
-                self.MASTER.hincrby(self.event_key, 'count_download_link', 1)
+            # self.MASTER.hincrby(self.event_key, 'count_download_link', 1)
 
             return False
         
@@ -187,7 +184,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
       
         success_name = self.get_success_name(meta['publish_time'])
         ready_name = self.get_ready_name(meta['publish_time'])
-        # new_name = self.get_new_link_name(meta['publish_time'])
+
            
         if self.check_rule == 'normal':
             check_value = json.dumps({"url": meta['url'], "publish_time": meta['publish_time']})
@@ -203,9 +200,10 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             # 移动到success集合中
             self.MASTER.smove(ready_name, success_name, check_value)
         
-
     # 通过redis检测数据是否重复
     def download_error(self, request, response):
+        
+        # 超过重试次数
         
         meta = request.meta
 
@@ -213,26 +211,38 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         if meta.get('item') != None:
             meta = meta.get('item')
 
+        self.max_error_num += 1
 
-        # 只监控详情数据获取部分，获取详情部分代码meta传递下面两个变量
-        if meta.get('url') != None and meta.get('publish_time') != None:
-            self.max_error_num -= 1
-            filter_key = meta.get('url') + meta.get('title') + meta.get('publish_time')
-            md5_key = hashlib.md5(filter_key.encode(encoding='UTF-8')).hexdigest()
-            ready_name = self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + meta.get('publish_time').strip()[:7] + ':' + md5_key
+
+
+
+        # fail_name = self.get_download_error(meta['publish_time'])
+        
+
+
+        # # 只监控详情数据获取部分，获取详情部分代码meta传递下面两个变量
+        # if meta.get('url') != None and meta.get('publish_time') != None:
+        #     self.max_error_num -= 1
+        #     filter_key = meta.get('url') + meta.get('title') + meta.get('publish_time')
+        #     md5_key = hashlib.md5(filter_key.encode(encoding='UTF-8')).hexdigest()
+        #     ready_name = self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + meta.get('publish_time').strip()[:7] + ':' + md5_key
             
-            if self.MASTER.hexists(ready_name, 'retry_num') == False:
-                self.MASTER.hmset(ready_name,{"time": time.strftime("%Y-%m-%d %H:%M:%S"), "response_code": response.status,"url": meta.get('url'), "title": meta.get('title'),"publish_time": meta.get('publish_time'), "retry_num": self.retry_num})
+        #     if self.MASTER.hexists(ready_name, 'retry_num') == False:
+        #         self.MASTER.hmset(ready_name,{"time": time.strftime("%Y-%m-%d %H:%M:%S"), "response_code": response.status,"url": meta.get('url'), "title": meta.get('title'),"publish_time": meta.get('publish_time'), "retry_num": self.retry_num})
             
-            else:
-                # 获取重试次数
-                retry_num = self.MASTER.hget(ready_name, 'retry_num')
-                if int(retry_num) > 1:
-                    self.MASTER.hincrby(ready_name, 'retry_num', -1)
-                else:
-                    self.max_error_num += 1
-                    self.count_download_link -= 1
-                    print('self.count_download_link', self.count_download_link)
+        #     else:
+        #         # 获取重试次数
+        #         retry_num = self.MASTER.hget(ready_name, 'retry_num')
+        #         if int(retry_num) > 1:
+        #             self.MASTER.hincrby(ready_name, 'retry_num', -1)
+        #         else:
+        #             self.max_error_num += 1
+        #             self.count_download_link -= 1
+        #             print('self.count_download_link', self.count_download_link)
+
+        
+
+
 
 
     # 正常结束，调用检查更新代码
@@ -246,7 +256,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
                 self.driver.quit()
             except:
                 pass
-        print('closed', reason)
 
         if self.page_over == False or self.max_error_num < 0 or self.count_download_link != self.count_download_success:
          
@@ -259,10 +268,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         if hasattr(self, 'county'):
             update_map['county'] = self.county
 
-        if hasattr(self, 'file_type'):
-            update_map['file_type'] = self.file_type
-
-        print(update_map)
         print('count_download_link:%s' % self.count_download_link)
         print('self.page_over', self.page_over)
         print('self.max_error_num', self.max_error_num)
@@ -270,6 +275,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
         if self.last_publish_time != None:
             self.MASTER.hmset(self.event_key, update_map)
+
 
 
     # 打开浏览器
@@ -362,9 +368,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             for item in cookies:
                 _cookie = _cookie + item['name'] + '=' + item['value'] + ';'
             return _cookie
-
-
-
 
     def parse(self, response):
         pass

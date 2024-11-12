@@ -8,7 +8,9 @@ from w3lib.http import basic_auth_header
 import json
 from scrapy.http import HtmlResponse
 from curl_cffi import requests as tl_requests
-
+from scrapy import signals
+from scrapy.utils.response import response_status_message
+import random
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
 
@@ -75,17 +77,16 @@ class DownloaderMiddleware:
     def process_request(self, request, spider):
         # Called for each request that goes through the downloader
         # middleware.
-        if request.method == 'GET' and spider.download_by_driver == True and request.meta.get(
-                'download_by_driver') == None:
+        if request.method == 'GET' and spider.download_by_driver == True and request.meta.get('download_by_driver') == None:
             return spider.driver_get_page(request.url, request)
             
         return None
 
     def process_response(self, request, response, spider):
         # Called with the response returned from the downloader.
-        if response.status != 200:
-            spider.record_error(request, response)
-        # Must either;
+        # if response.status != 200:
+        #     spider.record_error(request, response)
+        # # Must either;
         # - return a Response object
         # - return a Request object
         # - or raise IgnoreRequest
@@ -93,6 +94,12 @@ class DownloaderMiddleware:
         return response
 
     def process_exception(self, request, exception, spider):
+        
+        # 处理error
+        
+        # spider.download_error(request, exception)
+        
+        
         # Called when a download handler or a process_request()
         # (from other downloader middleware) raises an exception.
 
@@ -104,6 +111,40 @@ class DownloaderMiddleware:
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
+
+
+class RetryDownloaderMiddleware:
+    def __init__(self):
+        self.max_retry_times = 3
+        self.proxy_list = [
+            'http://proxy1.example.com:8080',
+            'http://proxy2.example.com:8080',
+            'http://proxy3.example.com:8080'
+        ]
+
+    def process_request(self, request, spider):
+        # 检查是否需要使用代理
+        if 'retry_times' in request.meta and request.meta['retry_times'] > 0:
+            request.meta['proxy'] = random.choice(self.proxy_list)
+        return None
+
+    def process_response(self, request, response, spider):
+        if response.status >= 400:
+            retry_times = request.meta.get('retry_times', 0) + 1
+            if retry_times <= self.max_retry_times:
+                request.meta['retry_times'] = retry_times
+                return request
+            else:
+                self._handle_download_failure(request, spider)
+
+        return response
+
+    def _handle_download_failure(self, request, spider):
+        # 处理下载失败的情况
+        spider.logger.error(f"Download failed for {request.url}")
+        # 可以在这里添加更多的处理逻辑，例如记录到数据库或发送通知
+        # ...
+
 
 
 class ProxyDownloaderMiddleware:
