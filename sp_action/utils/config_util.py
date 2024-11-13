@@ -25,6 +25,7 @@ class ConfigLoader:
             'port': self.config.getint('mysql', 'port'),
             'db': self.config.get('mysql', 'db'),
             'table': self.config.get('mysql', 'table'),
+            'origin_table': self.config.get('mysql', 'origin_table'),
             'username': self.config.get('mysql', 'username'),
             'password': self.config.get('mysql', 'password')
         }

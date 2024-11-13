@@ -169,7 +169,9 @@ class RetryDownloaderMiddleware:
         # 检查是否需要使用代理,本地ip重试2次后使用代理，代理重试1次后放弃
 
         if 'retry_times' in request.meta and request.meta['retry_times'] > 1:
-            request.meta['proxy'] = random.choice(self.proxy_list)
+            # request.meta['proxy'] = random.choice(self.proxy_list)
+            print('使用代理')
+            pass
         return None
 
     def process_response(self, request, response, spider):

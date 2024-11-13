@@ -40,13 +40,16 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     check_rule = None
 
     custom_settings = {
-        "ITEM_PIPELINES": {'sp_action.pipelines.TransformerAddPipeline': 300},
+        "ITEM_PIPELINES": {
+            'sp_action.pipelines.TransformerAddPipeline': 300
+        },
         'DOWNLOAD_DELAY': 0.3,
         'DOWNLOAD_TIMEOUT': 30,
         'DOWNLOADER_MIDDLEWARES': {
-        'sp_action.middlewares.RetryDownloaderMiddleware': 100,
-        'sp_action.middlewares.SeleniumMiddleware': 200,
-        }
+            'sp_action.middlewares.RetryDownloaderMiddleware': 100,
+            'sp_action.middlewares.SeleniumMiddleware': 200,
+        },
+        'LOG_LEVEL':'ERROR',
     }
 
 
