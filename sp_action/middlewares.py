@@ -180,16 +180,16 @@ class RetryDownloaderMiddleware:
                 request.meta['retry_times'] = retry_times
                 return request
             else:
-                self._handle_download_failure(request, spider)
+                self._handle_download_failure(response, spider)
 
         return response
 
-    def _handle_download_failure(self, request, spider):
+    def _handle_download_failure(self, response, spider):
         
         # 处理下载失败的情况
         # spider.logger.error(f"Download failed for {request.url}")
         # 让失败次数+1
-        spider.download_error(request)
+        spider.download_error(response)
         
         
        
