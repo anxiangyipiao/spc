@@ -14,7 +14,7 @@ from sp_action.utils import MySQLClient
 logger = logging.getLogger(__name__)
 
 
-class TransformerAddPipeline(object):
+class TransformerAddPipeline():
 
 
     def open_spider(self, spider):
@@ -98,3 +98,8 @@ class TransformerAddPipeline(object):
                 self.mysql_client.insert_item_to_simple(item)
                 
                 return item
+
+
+    def close_spider(self, spider):
+
+        self.mysql_client.close()
