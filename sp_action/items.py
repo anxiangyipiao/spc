@@ -8,7 +8,6 @@ import scrapy
 
 class SpiderItem(scrapy.Item):
 
-    table_name = 'c_transformer_info'
     _id = scrapy.Field()
     province = scrapy.Field()  # 省份
     city = scrapy.Field()  # 城市

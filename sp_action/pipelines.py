@@ -21,6 +21,12 @@ class TransformerAddPipeline(object):
 
         self.mysql_client = MySQLClient()
 
+        # 失效关键字
+        self.filter_titles = self.mysql_client.get_filter_title()
+        
+        # 重要关键字
+        self.importance_titles = self.mysql_client.get_important_title()
+
 
     def filter_time(self, item):
 
@@ -43,113 +49,55 @@ class TransformerAddPipeline(object):
             return False
         return True
 
-    def insert_original_info(self, item):
-          
-        pass
+
+    def get_item_type(self, item):
+         
+        # 千里马、招标网单独入库，其它网站进行正文筛选
+        if item['site_name'] != '千里马' and item['site_name'] != '招标网':
+            item['type'] = parse_html(item['title'], item['contents'])
+        else:
+            item['type'] = '变压器'
+        
+        return item
+
 
     def process_item(self, item, spider):
-
 
         # 过滤时间 17:00-17:40
         if self.filter_time(item) == False:
 
             return item
         
-
         # 判断详情页内容是否为空，或者获取失败
         if self.filter_contents(item) == False:
             
-            spider.download_error(dict(item, **{"title": item["title"]}))
+            spider.content_download_error(dict(item, **{"title": item["title"]}))
             return item
 
-
         # 可用item,调用下载成功回调函数
-        spider.download_success(dict(item, **{"title": item["title"]}))
+        spider.content_download_success(dict(item, **{"title": item["title"]}))
 
-        # 插入原始数据
-        self.mysql_client.insert_original_info(item)
+        # 插入原始数据，全量数据
+        self.mysql_client.insert_item_to_origin(item)
         
-
-        # 千里马、招标网单独入库，其它网站进行正文筛选
-        if item['site_name'] != '千里马' and item['site_name'] != '招标网':
-                item['type'] = parse_html(item['title'], item['contents'])
-        else:
-                item['type'] = '变压器'
-        
+        # 获得item的类型
+        item = self.get_item_type(item)
         # 对于需求的字段，进行数据入库
         if item['type']:
-                        # 从库中取无效关键字，进行入库前进行标题筛选无效关键字
-                        contains_keyword = []
-                        self.cursor.execute('SELECT contains_keyword FROM c_contains_keyword')
-                        results = self.cursor.fetchall()
-                        for row in results:
-                            contains_keyword.append(row[0])
-                        # print(contains_keyword)
-                        # 对于标题  去除无效关键字
-                        if any(keyword in item['title'] for keyword in contains_keyword) == False:
-                            item['contents'] = ''
-                            keys = list(item.keys())  # ['pcid', 'pid', 'cid', 'roles']
-                            values = list(item.values())  # ['333', '222', '111', '制作方']
-                            # 所有字段组成的字符串
-                            key_str = ','.join(['`%s`' % k for k in keys])
-                            # 值组成的字符串
-                            values_str = ','.join(["%s"] * len(values))
-                            c_item = dict(**item)
-                            c_keys = list(c_item.keys())
+                        
+            # 如果 item['title'] 不包含任何一个self.filter_titles，那么 any 函数会返回 False
+            if any(keyword in item['title'] for keyword in self.filter_titles) == False:
+                            
+                self.mysql_client.insert_item_to_simple(item)
+          
+                return item
 
-                            if 'entry_time' in keys:
-                                c_item.pop('entry_time')
-                                c_keys.remove('entry_time')
-
-                            c_values = list(c_item.values())
-                            # update字符串
-                            update_str = ','.join(["`{}`=%s".format(k) for k in c_keys])
-                            # SQL
-                            sql = 'insert into `{}`({}) values({}) on duplicate key update {}'.format(
-                                table_name,
-                                key_str,
-                                values_str,
-                                update_str
-                            )
-                            # print(c_values)
-                            # 执行SQL
-                            self.cursor.execute(sql, values + c_values)
-                            self.db.commit()
-                            print(f'----- 插入/更新成功: -----')
-                            return item
-                        else:
-                            important_title = ['变压器', '主变', '油浸', '油变', '35KV', '中性点', '整流变', '配变', '厂用变', '变电站','66KV', '10KV', '220KV']
-                            if any(keyword in item['title'] for keyword in important_title) == True:
-                                item['contents'] = ''
-                                keys = list(item.keys())  # ['pcid', 'pid', 'cid', 'roles']
-                                values = list(item.values())  # ['333', '222', '111', '制作方']
-                                # 所有字段组成的字符串
-                                key_str = ','.join(['`%s`' % k for k in keys])
-                                # 值组成的字符串
-                                values_str = ','.join(["%s"] * len(values))
-                                c_item = dict(**item)
-                                c_keys = list(c_item.keys())
-
-                                if 'entry_time' in keys:
-                                    c_item.pop('entry_time')
-                                    c_keys.remove('entry_time')
-
-                                c_values = list(c_item.values())
-                                # update字符串
-                                update_str = ','.join(["`{}`=%s".format(k) for k in c_keys])
-                                # SQL
-                                sql = 'insert into `{}`({}) values({}) on duplicate key update {}'.format(
-                                    table_name,
-                                    key_str,
-                                    values_str,
-                                    update_str
-                                )
-                                # print(c_values)
-                                # 执行SQL
-                                self.cursor.execute(sql, values + c_values)
-                                self.db.commit()
-                                print(f'----- 插入/更新成功: -----')
-                                return item
+            # 如果 item['title'] 包含任何一个self.importance_titles，那么 any 函数会返回 True
+            if any(keyword in item['title'] for keyword in self.importance_titles) == True:
+                
+                self.mysql_client.insert_item_to_simple(item)
+                
+                return item
 
 
 
