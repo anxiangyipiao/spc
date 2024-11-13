@@ -5,7 +5,7 @@
 
 from scrapy import signals
 from w3lib.http import basic_auth_header
-import json
+from sp_action.utils import BrowserManager
 from scrapy.http import HtmlResponse
 from curl_cffi import requests as tl_requests
 from scrapy import signals
@@ -76,9 +76,9 @@ class DownloaderMiddleware:
 
     def process_request(self, request, spider):
         # Called for each request that goes through the downloader
-        # middleware.
-        if request.method == 'GET' and spider.download_by_driver == True and request.meta.get('download_by_driver') == None:
-            return spider.driver_get_page(request.url, request)
+        # # middleware.
+        # if request.method == 'GET' and spider.download_by_driver == True and request.meta.get('download_by_driver') == None:
+        #     return spider.driver_get_page(request.url, request)
             
         return None
 
@@ -113,6 +113,30 @@ class DownloaderMiddleware:
         spider.logger.info('Spider opened: %s' % spider.name)
 
 
+
+class SeleniumMiddleware:
+    def __init__(self, use_profix=False, timeout=360, page_load_strategy='', headless=True):
+        self.browser_manager = BrowserManager(use_profix, timeout, page_load_strategy, headless)
+        self.browser_manager.open_browser()
+
+    def process_request(self, request, spider):
+        if 'selenium' in request.meta:
+            self.browser_manager.driver.get(request.url)
+            self.browser_manager.page_wait(request.url, 5)
+            content = self.browser_manager.driver.page_source
+            return HtmlResponse(request.url, body=content, encoding='utf-8', request=request)
+
+    def process_exception(self, request, exception, spider):
+        if self.browser_manager.driver:
+            self.browser_manager.driver.quit()
+            self.browser_manager.open_browser()
+            return HtmlResponse(request.url, status=500, body=b'', encoding='utf-8', request=request)
+
+    def spider_closed(self, spider):
+        self.browser_manager.close_browser()
+
+
+
 class RetryDownloaderMiddleware:
     def __init__(self):
         self.max_retry_times = 3
@@ -144,7 +168,6 @@ class RetryDownloaderMiddleware:
         spider.logger.error(f"Download failed for {request.url}")
         # 可以在这里添加更多的处理逻辑，例如记录到数据库或发送通知
         # ...
-
 
 
 class ProxyDownloaderMiddleware:

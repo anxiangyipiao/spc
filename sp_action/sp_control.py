@@ -121,7 +121,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         month_now = publish_time[:7]
         return self.env + ':' + 'download_link' + ':' + self.province + ':' + self.name + ':' + month_now + ':ready'
 
-    def get_download_error(self,publish_time):
+    def get_download_error_name(self,publish_time):
        month_now = publish_time[:7]
        return self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + month_now + ':' + md5_key
 
@@ -241,10 +241,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         #             print('self.count_download_link', self.count_download_link)
 
         
-
-
-
-
     # 正常结束，调用检查更新代码
     def closed(self, reason):
 
@@ -257,13 +253,21 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             except:
                 pass
 
+
+
+
+
         if self.page_over == False or self.max_error_num < 0 or self.count_download_link != self.count_download_success:
          
             update_map = {'running_status': 'faild', 'province': self.province, 'city': self.city, 'county': '','current_directory':self.current_directory}
 
+
+
         else:
 
             update_map = {'running_status': 'success', 'retry_times': '0', 'last_publish_time': self.last_publish_time,'province': self.province, 'city': self.city, 'county': '','current_directory':self.current_directory}
+
+
 
         if hasattr(self, 'county'):
             update_map['county'] = self.county
@@ -278,49 +282,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
 
 
-    # 打开浏览器
-    def openBrowser(self, use_profix=False, timeout=360, page_load_strategy=''):
-        if self.driver != None:
-            return
-        sp_file_path = os.path.split(os.path.realpath(__file__))[0] + os.sep
-        chrome_options = Options()
-        # 修改windows.navigator.webdriver，防机器人识别机制，selenium自动登陆判别机制
-        # chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
-        # 根据配置是否显示浏览器
-        chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        # 可根据需要修改加载策略
-        if page_load_strategy != '':
-            chrome_options.page_load_strategy = page_load_strategy
-        prefs = {
-            'profile.default_content_setting_values': {
-                'images': 2,  # 屏蔽图片
-                'stylesheet': 2,
-                'notifications': 2,  # 屏蔽消息推送
-            }
-        }
-        print("启动1")
-        # 添加屏蔽chrome浏览器禁用图片的设置
-        # chrome_options.add_experimental_option("prefs", prefs)
-        try:
-            self.driver = webdriver.Chrome(options=chrome_options)
-            print("启动2")
-        except SessionNotCreatedException:
-            print('浏览器驱动不匹配，尝试重新下载')
-            driver_path = ChromeDriverManager().install()
-            self.driver = webdriver.Chrome(driver_path, chrome_options=chrome_options)
-        except WebDriverException as e:
-            print('启动浏览器失败', e)
-            driver_path = ChromeDriverManager().install()
-            self.driver = webdriver.Chrome(driver_path, chrome_options=chrome_options)
-        with open(sp_file_path + 'stealth.min.js', 'r') as f:
-            js = f.read()
-        # 调用函数在页面加载前执行脚本
-        # self.driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {'source': js})
-        self.driver.set_page_load_timeout(timeout)
-
     def driver_get_page(self, url, request, ret_type='source', wait=0.5):
         if self.driver == None:
             self.openBrowser()
@@ -331,6 +292,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             content = self.driver.execute_script("return document.documentElement.outerHTML")
         else:
             content = self.driver.page_source
+            
         return HtmlResponse(url=url, body=content, encoding='utf-8', request=request)
 
     def page_wait(self, url, time_limit):
