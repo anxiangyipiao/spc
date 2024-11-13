@@ -186,10 +186,10 @@ class RetryDownloaderMiddleware:
 
     def _handle_download_failure(self, response, spider):
         
-        # 处理下载失败的情况
-        # spider.logger.error(f"Download failed for {request.url}")
-        # 让失败次数+1
-        spider.download_error(response)
+        # 如果是callback=self.parse_detail 则 记录错误
+        if response.request.callback == spider.parse_detail:
+
+            spider.content_download_error(response)
         
         
        

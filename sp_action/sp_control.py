@@ -147,7 +147,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         return True
 
     # 下载成功回调函数
-    def download_success(self, meta):
+    def content_download_success(self, meta):
         
         success_name = self.get_success_name(meta['publish_time'])
         failed_name = self.get_download_error_name(meta['publish_time'])
@@ -167,9 +167,10 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         if self.MASTER.sismember(failed_name, failed_check_value):
             self.MASTER.srem(failed_name, failed_check_value)
 
-    def download_error(self, request, response):
+    def content_download_error(self, request, response):
         
-        # 超过重试次数
+    
+
         meta = request.meta
 
         # 部分代码传递方式不一致，做兼容处理
