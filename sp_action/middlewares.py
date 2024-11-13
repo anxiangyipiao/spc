@@ -144,13 +144,11 @@ class SeleniumMiddleware:
 
         return response
 
-
     def process_exception(self, request, exception, spider):
         if self.browser_manager.driver:
             self.browser_manager.driver.quit()
             self.browser_manager.open_browser()
             return HtmlResponse(request.url, status=500, body=b'', encoding='utf-8', request=request)
-
 
     def spider_closed(self, spider):
         self.browser_manager.close_browser()

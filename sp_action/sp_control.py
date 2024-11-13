@@ -1,20 +1,8 @@
-import inspect
-import sys
-from redis.sentinel import Sentinel
-import configparser, hashlib, json, os, time, scrapy
+# -*- coding: utf-8 -*-
+import json, time, scrapy
 from datetime import datetime
-from scrapy.http import HtmlResponse
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import SessionNotCreatedException, WebDriverException
-from webdriver_manager.chrome import ChromeDriverManager
-from collections import Counter
-import redis
 import time
-import requests
-from hashlib import md5
 from datetime import datetime, timedelta
-
 from sp_action.utils import RedisClient,local_config
 
 
@@ -287,22 +275,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
                 return self.page_wait(url, time_limit)
         else:
             self.max_error_num -= 1
-
-
-
-    def get_cookie(self, driver, format='str'):
-    
-        cookies = driver.get_cookies()
-        if format != 'str':
-            cookies_dict = {}
-            for item in cookies:
-                cookies_dict[item['name']] = item['value']
-            return cookies_dict
-        else:
-            _cookie = ''
-            for item in cookies:
-                _cookie = _cookie + item['name'] + '=' + item['value'] + ';'
-            return _cookie
 
     def parse(self, response):
         pass
