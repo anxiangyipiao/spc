@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import configparser
 import os
 
@@ -5,11 +6,10 @@ class ConfigLoader:
 
     def __init__(self,config_file='config.ini'):
         current_dir = os.path.dirname(os.path.abspath(__file__)).split('utils')[0]
-        print(current_dir)
         self.config = configparser.ConfigParser()
         # 构建配置文件的绝对路径
         config_path = os.path.join(current_dir, config_file)
-        self.config.read(config_path)
+        self.config.read(config_path, encoding='utf-8')
 
     def get_redis_login_redirect(self):
         return {
@@ -51,3 +51,5 @@ mysql_config = loader.get_mysql()
 local_config = loader.get_local()
 chaojiying_config = loader.get_ChaojiyingClient()
 
+
+# print(redis_config)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import redis
 from sp_action.utils.config_util import redis_config
 
@@ -13,6 +14,7 @@ class RedisClient:
         return cls._instance
 
     def init_redis(self, config):
+
         self.pool = redis.ConnectionPool(
             host=config['host'],
             port=config['port'],
@@ -21,6 +23,7 @@ class RedisClient:
             decode_responses=True
         )
         self.client = redis.Redis(connection_pool=self.pool)
+
 
     def get_client(self):
         return self.client

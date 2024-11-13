@@ -7,10 +7,10 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'ShanDongsheng'
+BOT_NAME = 'sp_action'
 
-SPIDER_MODULES = ['ShanDongsheng.spiders']
-NEWSPIDER_MODULE = 'ShanDongsheng.spiders'
+SPIDER_MODULES = ['sp_action.spiders']
+NEWSPIDER_MODULE = 'sp_action.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -18,7 +18,7 @@ NEWSPIDER_MODULE = 'ShanDongsheng.spiders'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
-LOG_LEVEL='ERROR'
+# LOG_LEVEL='ERROR'
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # CONCURRENT_REQUESTS = 32
@@ -54,7 +54,7 @@ DOWNLOAD_DELAY = 2
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
-   'ShanDongsheng.middlewares.ShandongshengDownloaderMiddleware': 543,
+   # 'sp_action.middlewares.ShandongshengDownloaderMiddleware': 543,
 }
 
 # Enable or disable extensions
@@ -66,7 +66,7 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   'ShanDongsheng.pipelines.Shandongsheng_jianshegongcheng_Pipeline': 300,
+   # 'sp_action.pipelines.Shandongsheng_jianshegongcheng_Pipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

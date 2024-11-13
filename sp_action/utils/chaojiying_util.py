@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import hashlib
 import requests
 from sp_action.utils.config_util import chaojiying_config

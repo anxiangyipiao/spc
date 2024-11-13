@@ -10,7 +10,8 @@ from scrapy.exceptions import CloseSpider
 class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
     name = 'base_spider'
-    start_urls = ["https"]
+
+    start_urls = ''
     province = ''
     city = ''
     county = ''
@@ -40,23 +41,30 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     check_rule = None
 
     custom_settings = {
-        "ITEM_PIPELINES": {
-            'sp_action.pipelines.TransformerAddPipeline': 300
-        },
+       
         'DOWNLOAD_DELAY': 0.3,
         'DOWNLOAD_TIMEOUT': 30,
         'DOWNLOADER_MIDDLEWARES': {
-            'sp_action.middlewares.RetryDownloaderMiddleware': 100,
-            'sp_action.middlewares.SeleniumMiddleware': 200,
+            'sp_action.middlewares.DownloaderMiddleware': 500,
+            # 'sp_action.middlewares.RetryDownloaderMiddleware': 100,
+            # 'sp_action.middlewares.SeleniumMiddleware': 200,
         },
-        'LOG_LEVEL':'ERROR',
+         "ITEM_PIPELINES": {
+            'sp_action.pipelines.TransformerAddPipeline': 300,
+        },
+        # 'LOG_LEVEL':'ERROR',
     }
 
 
     def __init__(self):
         
         # redis配置
-        self.MASTER = RedisClient().get_client()
+        try:
+            self.MASTER = RedisClient().get_client()
+        except Exception as e:
+            print("redis connect error")
+
+        self.initialize_spider_data()
     
     def initialize_spider_data(self):
 
@@ -65,18 +73,17 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         
         #  获取上次运行时间
         if  self.MASTER.hget(self.event_key, 'last_publish_time') == None:
-            self.last_publish_time = str(datetime.now() + timedelta(days=6))[:10]
-            self.last_published_timestamp = self.date_to_timestamp(str(datetime.now() + timedelta(days=6))[:10])
+            self.last_publish_time = str(datetime.now() - timedelta(days=self.published_check_offset_day))[:10]
+            self.last_published_timestamp = self.date_to_timestamp(str(datetime.now() - timedelta(days=self.published_check_offset_day))[:10])
         
         else:
             self.last_publish_time = self.MASTER.hget(self.event_key, 'last_publish_time')
             self.last_published_timestamp = self.date_to_timestamp(self.last_publish_time)
 
-
         self.MASTER.hmset(self.event_key, {
                 'running_status': 'running',
             })
-
+        
     def date_to_timestamp(self, date_str):
         date_str = date_str.strip()
         dt = datetime.strptime(str(date_str), '%Y-%m-%d')
@@ -91,7 +98,9 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         
         # 转时间戳对比
         check_time = self.date_to_timestamp(publish_time)
-        return check_time > (self.last_published_timestamp - int(self.published_check_offset_day) * 86400)
+
+        # 判断是否在时间范围内
+        return check_time < self.last_published_timestamp
     
     def get_success_name(self,publish_time):
         
@@ -115,7 +124,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         if  self.check_published_time(publish_time) == False:
             
             return True
-
 
         if self.check_rule == None:
             self.check_rule = check_rule
@@ -187,7 +195,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
                 'province': self.province, 
                 'city': self.city, 
                 'county': self.county,
-                'check_rule':self.check_rule,
                 'current_directory':os.path.dirname(os.path.abspath(__file__))
         }
 
@@ -247,3 +254,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
     def parse(self, response):
         pass
+    
+    def start_requests(self):
+            pass

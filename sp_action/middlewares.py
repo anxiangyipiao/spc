@@ -10,8 +10,6 @@ from scrapy.http import HtmlResponse
 from curl_cffi import requests as tl_requests
 from scrapy import signals
 from scrapy.utils.response import response_status_message
-import random
-# useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
 
 
@@ -115,12 +113,22 @@ class DownloaderMiddleware:
 
 class SeleniumMiddleware:
     def __init__(self, use_profix=False, timeout=360, page_load_strategy='', headless=True):
-        self.browser_manager = BrowserManager(use_profix, timeout, page_load_strategy, headless)
-        self.browser_manager.open_browser()
+
+        self.use_profix = use_profix
+        self.timeout = timeout
+        self.page_load_strategy = page_load_strategy
+        self.headless = headless
+        self.browser_manager = None
+
 
     def process_request(self, request, spider):
         
         if  request.meta.get('download_by_driver') == True:
+
+            if self.browser_manager is None:
+                self.browser_manager = BrowserManager(headless=self.headless, page_load_strategy=self.page_load_strategy)
+                self.browser_manager.open_browser()
+
             # 如果meta中存在'download_by_driver'且为True，则使用浏览器下载页面
             self.browser_manager.driver.get(request.url)
 
@@ -170,7 +178,6 @@ class RetryDownloaderMiddleware:
 
         if 'retry_times' in request.meta and request.meta['retry_times'] > 1:
             # request.meta['proxy'] = random.choice(self.proxy_list)
-            print('使用代理')
             pass
         return None
 

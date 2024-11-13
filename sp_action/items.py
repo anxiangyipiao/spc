@@ -22,7 +22,3 @@ class SpiderItem(scrapy.Item):
     contents = scrapy.Field()  # 详情页内容
     type = scrapy.Field()
     standby_url = scrapy.Field()
-
- 
-
-

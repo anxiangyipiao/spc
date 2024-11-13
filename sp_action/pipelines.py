@@ -7,7 +7,7 @@
 # useful for handling different item types with a single interface
 # import time
 import logging
-import time, os
+import time
 from .tool import parse_html
 from sp_action.utils import MySQLClient
 
@@ -98,8 +98,3 @@ class TransformerAddPipeline(object):
                 self.mysql_client.insert_item_to_simple(item)
                 
                 return item
-
-
-
-
-

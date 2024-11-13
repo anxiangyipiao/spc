@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import pymysql
 from pymysql.err import MySQLError
 from sp_action.utils.config_util import mysql_config
@@ -29,6 +30,7 @@ class MySQLClient:
                 cursorclass=pymysql.cursors.DictCursor
             )
             print("Connected to MySQL database")
+            
         except MySQLError as e:
             print(f"Error connecting to MySQL database: {e}")
 
@@ -101,13 +103,18 @@ class MySQLClient:
 
     def get_filter_title(self):
         filter_titles = []
-        self.cursor.execute('SELECT contains_keyword FROM c_contains_keyword')
-        results = self.cursor.fetchall()
-        for row in results:
-            filter_titles.append(row[0])
         
-        return filter_titles
+        with self.connection.cursor() as cursor:
+
+            cursor.execute('SELECT contains_keyword FROM c_contains_keyword')
+            results = cursor.fetchall()
+            for row in results:
+                filter_titles.append(row[0])
+            
+            return filter_titles
     
     def get_important_title(self):
 
         important_title = ['变压器', '主变', '油浸', '油变', '35KV', '中性点', '整流变', '配变', '厂用变', '变电站','66KV', '10KV', '220KV']
+
+        return important_title
