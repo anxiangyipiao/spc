@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
+import os
 import json, time, scrapy
 from datetime import datetime
 import time
 from datetime import datetime, timedelta
 from sp_action.utils import RedisClient,local_config
-
+from scrapy.exceptions import CloseSpider
 
 class ZhaotoubiaoBaseSpider(scrapy.Spider):
+
     name = 'base_spider'
     start_urls = ["https"]
     province = ''
     city = ''
+    county = ''
     # 上次采集时间
     last_published_timestamp = 0
 
@@ -20,7 +23,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     # 此网站采集时间偏移量，单位：天
     published_check_offset_day = 7
     
-    # 所以采集的link
+    # 所有采集的link
     count_download_link = 0
 
     # 采集成功的link
@@ -70,15 +73,8 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
 
         self.MASTER.hmset(self.event_key, {
-                'last_publish_time': self.last_publish_time,
-                'published_check_offset_day': self.published_check_offset_day,
                 'running_status': 'running',
-                'count_download_link': 0,
-                'last_run_time': time.strftime("%Y-%m-%d %H:%M:%S")
             })
-
-
-        self.published_check_offset_day = self.MASTER.hget(self.event_key, 'published_check_offset_day')
 
     def date_to_timestamp(self, date_str):
         date_str = date_str.strip()
@@ -89,7 +85,8 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         
         # 提前结束
         if self.max_error_num < 0:
-            return False
+
+            raise CloseSpider('max_error_num < 0')
         
         # 转时间戳对比
         check_time = self.date_to_timestamp(publish_time)
@@ -183,22 +180,44 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     # 正常结束，调用检查更新代码
     def closed(self, reason):
 
+        update_map = {
+                'last_run_time': time.strftime("%Y-%m-%d %H:%M:%S"),
+                'last_publish_time': self.last_publish_time,
+                'published_check_offset_day': self.published_check_offset_day,
+                'province': self.province, 
+                'city': self.city, 
+                'county': self.county,
+                'check_rule':self.check_rule,
+                'current_directory':os.path.dirname(os.path.abspath(__file__))
+        }
+
         if self.page_over == False or self.max_error_num < 0 or self.count_download_link != self.count_download_success:
-         
-            update_map = {'running_status': 'faild', 'province': self.province, 'city': self.city, 'county': '','current_directory':self.current_directory}
+            update_map['running_status'] = 'faild'
         else:
-            update_map = {'running_status': 'success', 'retry_times': '0', 'last_publish_time': self.last_publish_time,'province': self.province, 'city': self.city, 'county': '','current_directory':self.current_directory}
+            update_map['running_status'] = 'success'
 
-        if hasattr(self, 'county'):
-            update_map['county'] = self.county
+        # 更新
+        update_map['count_download_link'] = self.count_download_link
+        update_map['count_download_success'] = self.count_download_success
 
+        success_name = self.get_success_name(self.last_publish_time)
+        failed_name = self.get_download_error_name(self.last_publish_time)
+
+        update_map['total_success_count'] = self.MASTER.scard(success_name)
+        update_map['total_failed_count'] = self.MASTER.scard(failed_name)
+
+        self.MASTER.hmset(self.event_key, update_map)
+
+        self.log_info(update_map)
+
+
+    def log_info(self, update_map):
+
+        print('running_status:%s' % update_map['running_status'])
         print('count_download_link:%s' % self.count_download_link)
         print('self.page_over', self.page_over)
         print('self.max_error_num', self.max_error_num)
         print('count_download_success:%s' % self.count_download_success)
-
-        if self.last_publish_time != None:
-            self.MASTER.hmset(self.event_key, update_map)
 
 
     def page_wait(self, url, time_limit):
