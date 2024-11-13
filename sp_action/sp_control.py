@@ -39,8 +39,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
     check_rule = None
 
-    filed_list = []
-
     custom_settings = {
         "ITEM_PIPELINES": {'sp_action.pipelines.TransformerAddPipeline': 300},
         'DOWNLOAD_DELAY': 0.3,
@@ -175,8 +173,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
         # 本轮错误次数加一
         self.max_error_num -= 1
-
-        
+    
     # 正常结束，调用检查更新代码
     def closed(self, reason):
 
@@ -210,7 +207,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
         self.log_info(update_map)
 
-
     def log_info(self, update_map):
 
         print('running_status:%s' % update_map['running_status'])
@@ -218,7 +214,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         print('self.page_over', self.page_over)
         print('self.max_error_num', self.max_error_num)
         print('count_download_success:%s' % self.count_download_success)
-
 
     def page_wait(self, url, time_limit):
          
@@ -246,7 +241,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
                 return self.page_wait(url, time_limit)
         else:
             self.max_error_num -= 1
-
 
     def parse(self, response):
         pass
