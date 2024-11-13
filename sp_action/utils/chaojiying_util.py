@@ -64,5 +64,4 @@ class ChaojiyingClient:
 
 
 
-# chaojiying = ChaojiyingClient()
 
