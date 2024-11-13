@@ -147,15 +147,15 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         return True
 
     # 下载成功回调函数
-    def content_download_success(self, meta):
+    def content_download_success(self, item):
         
-        success_name = self.get_success_name(meta['publish_time'])
-        failed_name = self.get_download_error_name(meta['publish_time'])
+        success_name = self.get_success_name(item['publish_time'])
+        failed_name = self.get_download_error_name(item['publish_time'])
  
         if self.check_rule == 'normal':
-            check_value = json.dumps({"url": meta['url'], "publish_time": meta['publish_time']})
+            check_value = json.dumps({"url": item['url'], "publish_time": item['publish_time']})
         else:
-            check_value = json.dumps({"url": meta['url']})
+            check_value = json.dumps({"url": item['url']})
 
         # 添加到success集合中
         self.MASTER.sadd(success_name, check_value)
@@ -163,51 +163,25 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
         # 如果失败集合里面有，删除
         # title,url,publish_time
-        failed_check_value = json.dumps({"url": meta['url'], "title": meta['title'], "publish_time": meta['publish_time']})
+        failed_check_value = json.dumps({"url": item['url'], "title": item['title'], "publish_time": item['publish_time']})
         if self.MASTER.sismember(failed_name, failed_check_value):
             self.MASTER.srem(failed_name, failed_check_value)
 
-    def content_download_error(self, request, response):
+    def content_download_error(self, item):
         
-    
+        failed_name = self.get_download_error_name(item['publish_time'])
+        failed_check_value = json.dumps({"url": item['url'], "title": item['title'], "publish_time": item['publish_time']})
 
-        meta = request.meta
+        if not self.MASTER.sismember(failed_name, failed_check_value):
 
-        # 部分代码传递方式不一致，做兼容处理
-        if meta.get('item') != None:
-            meta = meta.get('item')
+            self.MASTER.sadd(failed_name, failed_check_value)
 
-        self.max_error_num += 1
-
-
-
-
-        # fail_name = self.get_download_error(meta['publish_time'])
-    
-        # # 只监控详情数据获取部分，获取详情部分代码meta传递下面两个变量
-        # if meta.get('url') != None and meta.get('publish_time') != None:
-        #     self.max_error_num -= 1
-        #     filter_key = meta.get('url') + meta.get('title') + meta.get('publish_time')
-        #     md5_key = hashlib.md5(filter_key.encode(encoding='UTF-8')).hexdigest()
-        #     ready_name = self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + meta.get('publish_time').strip()[:7] + ':' + md5_key
-            
-        #     if self.MASTER.hexists(ready_name, 'retry_num') == False:
-        #         self.MASTER.hmset(ready_name,{"time": time.strftime("%Y-%m-%d %H:%M:%S"), "response_code": response.status,"url": meta.get('url'), "title": meta.get('title'),"publish_time": meta.get('publish_time'), "retry_num": self.retry_num})
-            
-        #     else:
-        #         # 获取重试次数
-        #         retry_num = self.MASTER.hget(ready_name, 'retry_num')
-        #         if int(retry_num) > 1:
-        #             self.MASTER.hincrby(ready_name, 'retry_num', -1)
-        #         else:
-        #             self.max_error_num += 1
-        #             self.count_download_link -= 1
-        #             print('self.count_download_link', self.count_download_link)
+        # 本轮错误次数加一
+        self.max_error_num -= 1
 
         
     # 正常结束，调用检查更新代码
     def closed(self, reason):
-
 
         if self.page_over == False or self.max_error_num < 0 or self.count_download_link != self.count_download_success:
          

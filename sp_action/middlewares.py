@@ -180,20 +180,18 @@ class RetryDownloaderMiddleware:
                 request.meta['retry_times'] = retry_times
                 return request
             else:
-                self._handle_download_failure(response, spider)
+                self._handle_download_failure(request, response, spider)
 
         return response
 
-    def _handle_download_failure(self, response, spider):
+    def _handle_download_failure(self, request, response, spider):
         
-        # 如果是callback=self.parse_detail 则 记录错误
-        if response.request.callback == spider.parse_detail:
-
-            spider.content_download_error(response)
+        # 处理下载失败的请求
+        callback_name = getattr(request.callback, '__name__', None)
+        if callback_name == 'parse_detail':
+            item = request.meta['item']
+            spider.content_download_error(item)
         
-        
-       
-
 
 class ProxyDownloaderMiddleware:
 
