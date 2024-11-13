@@ -191,7 +191,6 @@ class RetryDownloaderMiddleware:
         # ...
 
 
-
 class ProxyDownloaderMiddleware:
 
     def process_request(self, request, spider):

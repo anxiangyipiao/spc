@@ -22,6 +22,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     
     # 所以采集的link
     count_download_link = 0
+
     # 采集成功的link
     count_download_success = 0
     
@@ -108,14 +109,9 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         return self.env + ':' + 'download_link' + ':' + self.province + ':' + self.name + ':' + month_now + ':ready'
 
     def get_download_error_name(self,publish_time):
-       month_now = publish_time[:7]
-       return self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + month_now + ':' + md5_key
+        month_now = publish_time[:7]
+        return self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + month_now + ':error'
 
-    def get_new_link_name(self,publish_time):
-            
-            month_now = publish_time[:7]
-            return self.env + ':' + 'new_link' + ':' + self.province + ':' + self.name + ':' + month_now + month_now
-    
     # 添加下载任务set 先使用默认日期过滤，再使用redis集合去重，默认使用去重的redis key为当前爬虫名称，可修改指定名称作为去重判断
     def add_download_task(self, union_id, publish_time, check_rule='normal'):
         '''
@@ -124,17 +120,22 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         :param spider_name: 爬虫名称
         :param check_rule: 检查规则，默认为normal，可选值有：normal,simple,url  
         '''
-        if self.check_rule == None:
-            self.check_rule = check_rule
 
-        if self.last_publish_time == None or self.date_to_timestamp(self.last_publish_time) < self.date_to_timestamp(publish_time[:10]):
-            self.last_publish_time = publish_time[:10]
 
         # 先过滤日期，超过日期的不再添加
         if  self.check_published_time(publish_time) == False:
             
             return True
-        
+
+
+        if self.check_rule == None:
+            self.check_rule = check_rule
+
+        # 更新最后一次发布时间
+        if self.last_publish_time == None or self.date_to_timestamp(self.last_publish_time) < self.date_to_timestamp(publish_time[:10]):
+            self.last_publish_time = publish_time[:10]
+
+        # 生成redis key
         success_name = self.get_success_name(publish_time)
         ready_name = self.get_ready_name(publish_time)
 
@@ -167,11 +168,9 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     # 下载成功回调函数
     def download_success(self, meta):
         
-      
         success_name = self.get_success_name(meta['publish_time'])
         ready_name = self.get_ready_name(meta['publish_time'])
-
-           
+         
         if self.check_rule == 'normal':
             check_value = json.dumps({"url": meta['url'], "publish_time": meta['publish_time']})
         
@@ -186,6 +185,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             # 移动到success集合中
             self.MASTER.smove(ready_name, success_name, check_value)
         
+    
     # 通过redis检测数据是否重复
     def download_error(self, request, response):
         
@@ -203,9 +203,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
 
         # fail_name = self.get_download_error(meta['publish_time'])
-        
-
-
+    
         # # 只监控详情数据获取部分，获取详情部分代码meta传递下面两个变量
         # if meta.get('url') != None and meta.get('publish_time') != None:
         #     self.max_error_num -= 1
@@ -275,6 +273,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
                 return self.page_wait(url, time_limit)
         else:
             self.max_error_num -= 1
+
 
     def parse(self, response):
         pass
