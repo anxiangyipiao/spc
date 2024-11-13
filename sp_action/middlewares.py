@@ -185,10 +185,14 @@ class RetryDownloaderMiddleware:
         return response
 
     def _handle_download_failure(self, request, spider):
+        
         # 处理下载失败的情况
-        spider.logger.error(f"Download failed for {request.url}")
-        # 可以在这里添加更多的处理逻辑，例如记录到数据库或发送通知
-        # ...
+        # spider.logger.error(f"Download failed for {request.url}")
+        # 让失败次数+1
+        spider.download_error(request)
+        
+        
+       
 
 
 class ProxyDownloaderMiddleware:

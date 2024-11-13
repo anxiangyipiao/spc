@@ -28,18 +28,15 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     
     # 一次运行总错误次数超出该值，认为网站不可爬
     max_error_num = 5
-    
-    # 是否使用chrome下载数据
-    download_by_driver = False
-    download_by_drission = False
-    driver = None
-    
+
     env = local_config['env']
     
     # 翻页结束标志
     page_over = False
 
     check_rule = None
+
+    filed_list = []
 
     custom_settings = {
         "ITEM_PIPELINES": {'sp_action.pipelines.TransformerAddPipeline': 300},
@@ -103,11 +100,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         month_now = publish_time[:7]
         return self.env + ':' + 'download_link' + ':' + self.province + ':' + self.name + ':' + month_now + ':success'
 
-    def get_ready_name(self,publish_time):
-        
-        month_now = publish_time[:7]
-        return self.env + ':' + 'download_link' + ':' + self.province + ':' + self.name + ':' + month_now + ':ready'
-
     def get_download_error_name(self,publish_time):
         month_now = publish_time[:7]
         return self.env + ':' + 'download_error' + ':' + self.province + ':' + self.name + ':' + month_now + ':error'
@@ -120,7 +112,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         :param spider_name: 爬虫名称
         :param check_rule: 检查规则，默认为normal，可选值有：normal,simple,url  
         '''
-
 
         # 先过滤日期，超过日期的不再添加
         if  self.check_published_time(publish_time) == False:
@@ -137,7 +128,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
         # 生成redis key
         success_name = self.get_success_name(publish_time)
-        ready_name = self.get_ready_name(publish_time)
+        # ready_name = self.get_ready_name(publish_time)
 
         if check_rule == 'normal':
             check_value = json.dumps({"url": union_id, "publish_time": publish_time})
@@ -151,16 +142,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
             # 本轮爬取link加一
             self.count_download_link += 1
 
-            # 判断是否已经存在ready集合中
-            ready_exist = self.MASTER.sismember(ready_name, check_value)
-            
-            # ready集合中不存在，添加到ready集合中
-            if ready_exist == False:
-                
-                self.MASTER.sadd(ready_name, check_value)
-
-            # self.MASTER.hincrby(self.event_key, 'count_download_link', 1)
-
             return False
         
         return True
@@ -169,28 +150,26 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     def download_success(self, meta):
         
         success_name = self.get_success_name(meta['publish_time'])
-        ready_name = self.get_ready_name(meta['publish_time'])
-         
+        failed_name = self.get_download_error_name(meta['publish_time'])
+ 
         if self.check_rule == 'normal':
             check_value = json.dumps({"url": meta['url'], "publish_time": meta['publish_time']})
-        
         else:
             check_value = json.dumps({"url": meta['url']})
-        
-        # 判断是否已经存在ready集合中
-        if self.MASTER.sismember(ready_name, check_value):
-            
-            self.count_download_success += 1
-            
-            # 移动到success集合中
-            self.MASTER.smove(ready_name, success_name, check_value)
-        
-    
-    # 通过redis检测数据是否重复
+
+        # 添加到success集合中
+        self.MASTER.sadd(success_name, check_value)
+        self.count_download_success += 1
+
+        # 如果失败集合里面有，删除
+        # title,url,publish_time
+        failed_check_value = json.dumps({"url": meta['url'], "title": meta['title'], "publish_time": meta['publish_time']})
+        if self.MASTER.sismember(failed_name, failed_check_value):
+            self.MASTER.srem(failed_name, failed_check_value)
+
     def download_error(self, request, response):
         
         # 超过重试次数
-        
         meta = request.meta
 
         # 部分代码传递方式不一致，做兼容处理
