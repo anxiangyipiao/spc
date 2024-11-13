@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 class TransformerAddPipeline(object):
-    # 构造方法（初始化对象时执行的方法）
-    # 开启爬虫时: 连接MySQL
+
+
     def open_spider(self, spider):
 
         self.mysql_client = MySQLClient()
