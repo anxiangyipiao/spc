@@ -21,7 +21,7 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     last_publish_time = None
     
     # 此网站采集时间偏移量，单位：天
-    published_check_offset_day = 7
+    published_check_offset_day = 5
     
     # 所有采集的link
     count_download_link = 0
