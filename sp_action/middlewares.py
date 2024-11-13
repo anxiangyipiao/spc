@@ -120,10 +120,14 @@ class SeleniumMiddleware:
         self.browser_manager.open_browser()
 
     def process_request(self, request, spider):
-        if 'selenium' in request.meta:
+        if  request.meta.get('download_by_driver') == True:
+            # 如果meta中存在'download_by_driver'且为True，则使用浏览器下载页面
             self.browser_manager.driver.get(request.url)
+            # 等待页面加载完成，最多等待5秒
             self.browser_manager.page_wait(request.url, 5)
+            # 获取页面的HTML源代码
             content = self.browser_manager.driver.page_source
+            # 返回一个HtmlResponse对象，包含页面的URL、内容、编码和原始请求
             return HtmlResponse(request.url, body=content, encoding='utf-8', request=request)
 
     def process_exception(self, request, exception, spider):
