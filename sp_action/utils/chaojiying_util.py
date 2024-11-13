@@ -1,6 +1,6 @@
 import hashlib
 import requests
-from sp_action.utils.config_loader import chaojiying_config
+from sp_action.utils.config_util import chaojiying_config
 
 class ChaojiyingClient:
     def __init__(self):

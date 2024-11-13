@@ -1,7 +1,7 @@
 
 
 
-from sp_action.utils.redis_utils import redis_client
+from sp_action.utils.redis_util import redis_client
 
 
 print(redis_client.ping()) 

@@ -113,20 +113,20 @@ class DownloaderMiddleware:
         spider.logger.info('Spider opened: %s' % spider.name)
 
 
-
 class SeleniumMiddleware:
     def __init__(self, use_profix=False, timeout=360, page_load_strategy='', headless=True):
         self.browser_manager = BrowserManager(use_profix, timeout, page_load_strategy, headless)
         self.browser_manager.open_browser()
 
     def process_request(self, request, spider):
+        
         if  request.meta.get('download_by_driver') == True:
             # 如果meta中存在'download_by_driver'且为True，则使用浏览器下载页面
             self.browser_manager.driver.get(request.url)
-            # 等待页面加载完成，最多等待5秒
-            self.browser_manager.page_wait(request.url, 5)
-            # 获取页面的HTML源代码
 
+            # 等待页面加载完成，最多等待5秒
+            self.browser_manager.driver.implicitly_wait(5)
+            
             ret_type = request.meta.get('ret_type', 'source')
             if ret_type == 'html':
                 # 获取页面的渲染后内容，特别是当页面中有动态生成的内容时
@@ -140,19 +140,24 @@ class SeleniumMiddleware:
         
         return None
 
+    def process_response(self, request, response, spider):
+
+        return response
+
+
     def process_exception(self, request, exception, spider):
         if self.browser_manager.driver:
             self.browser_manager.driver.quit()
             self.browser_manager.open_browser()
             return HtmlResponse(request.url, status=500, body=b'', encoding='utf-8', request=request)
 
+
     def spider_closed(self, spider):
         self.browser_manager.close_browser()
 
 
-
-
 class RetryDownloaderMiddleware:
+
     def __init__(self):
         self.max_retry_times = 3
         self.proxy_list = [
@@ -162,12 +167,15 @@ class RetryDownloaderMiddleware:
         ]
 
     def process_request(self, request, spider):
-        # 检查是否需要使用代理
-        if 'retry_times' in request.meta and request.meta['retry_times'] > 0:
+        
+        # 检查是否需要使用代理,本地ip重试2次后使用代理，代理重试1次后放弃
+
+        if 'retry_times' in request.meta and request.meta['retry_times'] > 1:
             request.meta['proxy'] = random.choice(self.proxy_list)
         return None
 
     def process_response(self, request, response, spider):
+
         if response.status >= 400:
             retry_times = request.meta.get('retry_times', 0) + 1
             if retry_times <= self.max_retry_times:
@@ -183,6 +191,7 @@ class RetryDownloaderMiddleware:
         spider.logger.error(f"Download failed for {request.url}")
         # 可以在这里添加更多的处理逻辑，例如记录到数据库或发送通知
         # ...
+
 
 
 class ProxyDownloaderMiddleware:

@@ -15,8 +15,6 @@ import requests
 from hashlib import md5
 from datetime import datetime, timedelta
 
-
-
 from sp_action.utils import RedisClient,local_config
 
 
@@ -58,9 +56,9 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         "ITEM_PIPELINES": {'sp_action.pipelines.TransformerAddPipeline': 300},
         'DOWNLOAD_DELAY': 0.3,
         'DOWNLOAD_TIMEOUT': 30,
-        # "CONCURRENT_REQUESTS" : 1
         'DOWNLOADER_MIDDLEWARES': {
-        'sp_action.middlewares.DownloaderMiddleware': 100,
+        'sp_action.middlewares.RetryDownloaderMiddleware': 100,
+        'sp_action.middlewares.SeleniumMiddleware': 200,
         }
     }
 
@@ -264,14 +262,19 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
 
 
     def page_wait(self, url, time_limit):
+         
         if time_limit > 0:
+
             check_content = False
-            # 天津特殊处理
-            if 'tj.gov.cn' in url:
-                content = self.driver.execute_script("return document.documentElement.outerHTML")
-                if '业务繁忙，请稍后再试' in content:
-                    check_content = True
+                  
+            # # 天津特殊处理
+            # if 'tj.gov.cn' in url:
+            #     content = self.driver.execute_script("return document.documentElement.outerHTML")
+            #     if '业务繁忙，请稍后再试' in content:
+            #         check_content = True
+                
             if '错误' in self.driver.title or '出错' in self.driver.title or '稍等...' in self.driver.title or time_limit == 1 or check_content == True:
+                
                 print('刷新页面', url)
                 self.driver.execute_script("window.location.href='%s'" % url)
                 time.sleep(3)
@@ -284,6 +287,8 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
                 return self.page_wait(url, time_limit)
         else:
             self.max_error_num -= 1
+
+
 
     def get_cookie(self, driver, format='str'):
     

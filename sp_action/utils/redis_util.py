@@ -1,5 +1,5 @@
 import redis
-from sp_action.utils.config_loader import redis_config
+from sp_action.utils.config_util import redis_config
 
 
 class RedisClient:
