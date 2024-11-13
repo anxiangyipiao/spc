@@ -244,30 +244,12 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
     # 正常结束，调用检查更新代码
     def closed(self, reason):
 
-        # 如果开启过浏览器，尝试关闭
-        if self.driver != None:
-            try:
-                print('close driver！')
-                self.driver.close()
-                self.driver.quit()
-            except:
-                pass
-
-
-
-
 
         if self.page_over == False or self.max_error_num < 0 or self.count_download_link != self.count_download_success:
          
             update_map = {'running_status': 'faild', 'province': self.province, 'city': self.city, 'county': '','current_directory':self.current_directory}
-
-
-
         else:
-
             update_map = {'running_status': 'success', 'retry_times': '0', 'last_publish_time': self.last_publish_time,'province': self.province, 'city': self.city, 'county': '','current_directory':self.current_directory}
-
-
 
         if hasattr(self, 'county'):
             update_map['county'] = self.county
@@ -280,20 +262,6 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         if self.last_publish_time != None:
             self.MASTER.hmset(self.event_key, update_map)
 
-
-
-    def driver_get_page(self, url, request, ret_type='source', wait=0.5):
-        if self.driver == None:
-            self.openBrowser()
-        self.driver.get(url)
-        self.page_wait(url, 5)
-        time.sleep(wait)
-        if ret_type == 'html':
-            content = self.driver.execute_script("return document.documentElement.outerHTML")
-        else:
-            content = self.driver.page_source
-            
-        return HtmlResponse(url=url, body=content, encoding='utf-8', request=request)
 
     def page_wait(self, url, time_limit):
         if time_limit > 0:

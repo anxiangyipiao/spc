@@ -126,9 +126,19 @@ class SeleniumMiddleware:
             # 等待页面加载完成，最多等待5秒
             self.browser_manager.page_wait(request.url, 5)
             # 获取页面的HTML源代码
-            content = self.browser_manager.driver.page_source
+
+            ret_type = request.meta.get('ret_type', 'source')
+            if ret_type == 'html':
+                # 获取页面的渲染后内容，特别是当页面中有动态生成的内容时
+                content = self.browser_manager.driver.execute_script("return document.documentElement.outerHTML")
+            else:
+                # 获取页面的源代码
+                content = self.browser_manager.driver.page_source
+
             # 返回一个HtmlResponse对象，包含页面的URL、内容、编码和原始请求
             return HtmlResponse(request.url, body=content, encoding='utf-8', request=request)
+        
+        return None
 
     def process_exception(self, request, exception, spider):
         if self.browser_manager.driver:
@@ -138,6 +148,7 @@ class SeleniumMiddleware:
 
     def spider_closed(self, spider):
         self.browser_manager.close_browser()
+
 
 
 

@@ -4,7 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import SessionNotCreatedException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
-from scrapy.http import HtmlResponse
+
 
 class BrowserManager:
     def __init__(self, use_profix=False, timeout=360, page_load_strategy='', headless=True):
@@ -60,18 +60,6 @@ class BrowserManager:
 
         # 设置页面加载超时时间
         self.driver.set_page_load_timeout(self.timeout)
-
-    def driver_get_page(self, url, ret_type='source', wait=0.5):
-        if self.driver is None:
-            self.open_browser()
-        self.driver.get(url)
-        self.page_wait(url, 5)
-        time.sleep(wait)
-        if ret_type == 'html':
-            content = self.driver.execute_script("return document.documentElement.outerHTML")
-        else:
-            content = self.driver.page_source
-        return HtmlResponse(url=url, body=content, encoding='utf-8')
 
     def page_wait(self, url, time_limit):
 
