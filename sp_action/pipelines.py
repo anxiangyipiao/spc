@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 class TransformerAddPipeline():
     
 
-
     def __init__(self):
 
         self.mysql_client = MySQLClient()
