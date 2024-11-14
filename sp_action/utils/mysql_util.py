@@ -27,9 +27,8 @@ class MySQLClient:
                 user=self.user,
                 password=self.password,
                 database=self.database,
-                cursorclass=pymysql.cursors.DictCursor
+                # cursorclass=pymysql.cursors.DictCursor
             )
-
             print("Connected to MySQL database")
             
         except MySQLError as e:
@@ -103,7 +102,7 @@ class MySQLClient:
 
 
     def get_filter_title(self):
-        
+
         filter_titles = []
         
         with self.connection.cursor() as cursor:

@@ -98,9 +98,9 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
         
         # 转时间戳对比
         check_time = self.date_to_timestamp(publish_time)
-
+        
         # 判断是否在时间范围内
-        return check_time < self.last_published_timestamp
+        return check_time > self.last_published_timestamp
     
     def get_success_name(self,publish_time):
         

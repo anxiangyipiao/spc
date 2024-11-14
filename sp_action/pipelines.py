@@ -8,24 +8,24 @@
 # import time
 import logging
 import time
-from .tool import parse_html
+from sp_action.tool import parse_html
 from sp_action.utils import MySQLClient
 
 logger = logging.getLogger(__name__)
 
 
 class TransformerAddPipeline():
+    
 
 
-    def open_spider(self, spider):
+    def __init__(self):
 
         self.mysql_client = MySQLClient()
 
         # 失效关键字
-        self.filter_titles = self.mysql_client.get_filter_title()
-        
+        self.filter_titles = None
         # 重要关键字
-        self.importance_titles = self.mysql_client.get_important_title()
+        self.importance_titles = ['变压器', '主变', '油浸', '油变', '35KV', '中性点', '整流变', '配变', '厂用变', '变电站','66KV', '10KV', '220KV']
 
 
     def filter_time(self, item):
@@ -84,6 +84,10 @@ class TransformerAddPipeline():
         item = self.get_item_type(item)
         # 对于需求的字段，进行数据入库
         if item['type']:
+
+            # 如果 self.filter_titles 为空，那么就从数据库中获取
+            if self.filter_titles == None:
+                self.filter_titles = self.mysql_client.get_filter_title()
                         
             # 如果 item['title'] 不包含任何一个self.filter_titles，那么 any 函数会返回 False
             if any(keyword in item['title'] for keyword in self.filter_titles) == False:
@@ -98,8 +102,5 @@ class TransformerAddPipeline():
                 self.mysql_client.insert_item_to_simple(item)
                 
                 return item
-
-
-    def close_spider(self, spider):
-
-        self.mysql_client.close()
+            
+        return item
