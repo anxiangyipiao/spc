@@ -71,15 +71,18 @@ class ZhaotoubiaoBaseSpider(scrapy.Spider):
          # 构建运行键
         self.event_key = self.env + ':' + 'run_status' + ':' + self.province + ':' + self.name
         
+
+        # 获得爬虫截止至上次发布时间的时间戳
+        self.last_published_timestamp = self.date_to_timestamp(str(datetime.now() - timedelta(days=self.published_check_offset_day))[:10])
+
+
         #  获取上次运行时间
         if  self.MASTER.hget(self.event_key, 'last_publish_time') == None:
             self.last_publish_time = str(datetime.now() - timedelta(days=self.published_check_offset_day))[:10]
-            self.last_published_timestamp = self.date_to_timestamp(str(datetime.now() - timedelta(days=self.published_check_offset_day))[:10])
-        
+
         else:
             self.last_publish_time = self.MASTER.hget(self.event_key, 'last_publish_time')
-            self.last_published_timestamp = self.date_to_timestamp(self.last_publish_time)
-
+            
         self.MASTER.hmset(self.event_key, {
                 'running_status': 'running',
             })
