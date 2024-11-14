@@ -53,11 +53,11 @@ class BrowserManager:
             driver_path = ChromeDriverManager().install()
             self.driver = webdriver.Chrome(executable_path=driver_path, options=chrome_options)
 
-        # # 加载 stealth.min.js 脚本
-        # with open(sp_file_path + 'stealth.min.js', 'r') as f:
-        #     js = f.read()
+        # 加载 stealth.min.js 脚本
+        with open(sp_file_path + 'stealth.min.js', 'r') as f:
+            js = f.read()
 
-        # self.driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {'source': js})
+        self.driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {'source': js})
 
         # 设置页面加载超时时间
         self.driver.set_page_load_timeout(self.timeout)

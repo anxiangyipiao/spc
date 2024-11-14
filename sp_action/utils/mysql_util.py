@@ -80,7 +80,6 @@ class MySQLClient:
         table_name = mysql_config['table']
 
         item.pop('contents')
-        item.pop('entry_time')
 
         keys = list(item.keys())
         values = list(item.values())
